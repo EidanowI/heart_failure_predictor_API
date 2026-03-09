@@ -13,8 +13,18 @@ def _():
     import pandas as pd
     import numpy as np
     from sklearn.model_selection import train_test_split
+    from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, classification_report
 
-    return pd, plt, torch, train_test_split
+    return (
+        accuracy_score,
+        nn,
+        pd,
+        plt,
+        precision_score,
+        recall_score,
+        torch,
+        train_test_split,
+    )
 
 
 @app.cell
@@ -84,6 +94,121 @@ def _(device, dummed_df, torch):
 @app.cell
 def _(X, train_test_split, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return X_test, X_train, y_test, y_train
+
+
+@app.cell
+def _(nn):
+    class PerceptronModel0(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layer_1 = nn.Linear(in_features=15, out_features=5)
+            self.layer_2 = nn.Linear(in_features=5, out_features=1)
+            self.LReLU = nn.LeakyReLU()
+
+        def forward(self, x):
+            return self.layer_2(self.LReLU(self.layer_1(x)))
+
+    return (PerceptronModel0,)
+
+
+@app.cell
+def _(PerceptronModel0, device):
+    perceptron_model_0v0 = PerceptronModel0().to(device)
+    return (perceptron_model_0v0,)
+
+
+@app.cell
+def _(device, nn, perceptron_model_0v0, torch):
+    _weight = 408/502
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([_weight]))
+    loss_fn = loss_fn.to(device)
+    optimizer = torch.optim.Adam(perceptron_model_0v0.parameters(), lr=0.001)
+    return loss_fn, optimizer
+
+
+@app.cell
+def _(
+    X_test,
+    X_train,
+    accuracy_score,
+    loss_fn,
+    optimizer,
+    perceptron_model_0v0,
+    recall_score,
+    torch,
+    y_test,
+    y_train,
+):
+    #torch.manual_seed(42)
+    #TODO: use diff round func for _pred (medical models)
+    epochs = 0
+
+    for epoch in range(epochs):
+        perceptron_model_0v0.train()
+
+        optimizer.zero_grad()
+
+        _logits = perceptron_model_0v0(X_train).squeeze()
+        _loss = loss_fn(_logits, y_train)
+
+        _loss.backward()
+        optimizer.step()
+
+        if epoch % 1000 == 0:
+            perceptron_model_0v0.eval()
+            with torch.inference_mode():
+                _test_logits = perceptron_model_0v0(X_test).squeeze()
+                _pred = torch.round(torch.sigmoid(_test_logits))
+
+                print("Recall: ", recall_score(y_test.cpu(), _pred.cpu()))
+                print("Accuracy: ", accuracy_score(y_test.cpu(), _pred.cpu()))
+                print("====================\n")
+    return
+
+
+@app.cell
+def _(torch):
+    def threshold_predict(logits, threshold=0.35):  # tunable!
+        probs = torch.sigmoid(logits)
+        return (probs > threshold).float()
+
+    return (threshold_predict,)
+
+
+@app.cell
+def _(
+    X_test,
+    accuracy_score,
+    perceptron_model_0v0,
+    precision_score,
+    recall_score,
+    threshold_predict,
+    torch,
+    y_test,
+):
+    perceptron_model_0v0.eval()
+    with torch.inference_mode():
+        _test_logits = perceptron_model_0v0(X_test).squeeze()
+    
+        #_pred = torch.round(torch.sigmoid(_test_logits))
+        _pred = threshold_predict(logits = _test_logits, threshold=0.18)
+
+        print("Recall: ", recall_score(y_test.cpu(), _pred.cpu()))
+        print("Precision: ", precision_score(y_test.cpu(), _pred.cpu()))
+        print("Accuracy: ", accuracy_score(y_test.cpu(), _pred.cpu()))
+        print("====================\n")
+    return
+
+
+@app.cell
+def _(perceptron_model_0v0, torch):
+    torch.save(perceptron_model_0v0.state_dict(), 'trained/trained_perceptron_v0.pth')
+    return
+
+
+@app.cell
+def _():
     return
 
 

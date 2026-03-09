@@ -180,6 +180,7 @@ def _(torch):
 def _(
     X_test,
     accuracy_score,
+    loaded_model,
     perceptron_model_0v0,
     precision_score,
     recall_score,
@@ -189,11 +190,11 @@ def _(
 ):
     perceptron_model_0v0.eval()
     with torch.inference_mode():
-        _test_logits = perceptron_model_0v0(X_test).squeeze()
-    
+        _test_logits = loaded_model(X_test).squeeze()
+
         #_pred = torch.round(torch.sigmoid(_test_logits))
         _pred = threshold_predict(logits = _test_logits, threshold=0.18)
-
+        print(_pred[0] == 1)
         print("Recall: ", recall_score(y_test.cpu(), _pred.cpu()))
         print("Precision: ", precision_score(y_test.cpu(), _pred.cpu()))
         print("Accuracy: ", accuracy_score(y_test.cpu(), _pred.cpu()))
@@ -202,9 +203,16 @@ def _(
 
 
 @app.cell
-def _(perceptron_model_0v0, torch):
-    torch.save(perceptron_model_0v0.state_dict(), 'trained/trained_perceptron_v0.pth')
+def _():
+    #torch.save(perceptron_model_0v0.state_dict(), 'trained/trained_perceptron_v0.pth')
     return
+
+
+@app.cell
+def _(PerceptronModel0, device, torch):
+    loaded_model = PerceptronModel0().to(device)
+    loaded_model.load_state_dict(torch.load('trained/trained_perceptron_v0.pth', map_location=device))
+    return (loaded_model,)
 
 
 @app.cell
